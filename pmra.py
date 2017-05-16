@@ -79,6 +79,61 @@ def getResults(test_set_ids):
 
     return pmid_results
 
+def getResultDocuments(test_set, pmid_results):
+    documents = {}
+
+    if os.path.exists("result_documents.json"):
+        result_documents_file = open("result_documents.json","r")
+        documents = json.load(result_documents_file)
+
+    try:
+        print(len(documents))
+        for doc in test_set:
+            doc_id = doc["pmid"]
+            results = pmid_results[doc_id]
+
+            for result_id in results:
+                if result_id not in documents:
+                    result_doc = {}
+                    result_doc["pmid"] = result_id
+
+                    #Get mesh major and add it do result_doc map
+                    doc_page = base_doc_url+result_id
+
+                    print(doc_page)
+
+                    requested_page = requests.get(doc_page)
+                    html = BeautifulSoup(requested_page.text)
+
+                    mesh_html = html.find("div",attrs={"class":["ui-ncbi-toggler-slave", "ui-ncbitoggler", "ui-ncbitoggler-slave-open"]}).find_all("ul")
+
+                    for ul_list in mesh_html:
+                        if ul_list.findPrevious().text == "MeSH terms":
+                            mesh_ul_list = ul_list
+                            break
+
+                    mesh_terms = [x.find("a").text.split("/")[0] for x in mesh_ul_list]
+
+                    result_doc["meshMajor"] = mesh_terms
+
+                    documents[result_id] = result_doc
+
+                    time.sleep(3)
+
+        documents_file = open("result_documents.json", "w")
+        documents_file.write(json.dumps(documents))
+        tlog("Wrote documents file to disk.")
+
+    except:
+        print("Exception occured, saving progress up to now.")
+        print(len(documents))
+        documents_file = open("result_documents.json", "w")
+        documents_file.write(json.dumps(documents))
+        raise
+
+    return documents
+
+
 start_time = getTime()
 
 if test_set_limit !=-1:
@@ -99,57 +154,22 @@ for i in range(threshold_start, threshold_end+1):
 eval = Evaluator()
 
 pmid_results = getResults(test_set_pmids)
+documents = getResultDocuments(test_set, pmid_results)
 
-results_map = {}
-i=0
-end = len(test_set)*10
 for doc in test_set:
-    doc_id = doc["pmid"]
-    results = pmid_results[doc_id]
 
-    result_docs = []
-
-    for result_id in results:
-        result_doc = {}
-        result_doc["pmid"] = result_id
-
-        #Get mesh major and add it do result_doc map
-        doc_page = base_doc_url+result_id
-        print(doc_page)
-
-        requested_page = requests.get(doc_page)
-        html = BeautifulSoup(requested_page.text)
-
-        mesh_html = html.find("div",attrs={"class":["ui-ncbi-toggler-slave", "ui-ncbitoggler", "ui-ncbitoggler-slave-open"]}).find_all("ul")
-
-        for ul_list in mesh_html:
-            if ul_list.findPrevious().text == "MeSH terms":
-                mesh_ul_list = ul_list
-                break
-
-        mesh_terms = [x.find("a").text.split("/")[0] for x in mesh_ul_list]
-
-        result_doc["meshMajor"] = mesh_terms
-
-        result_docs.append(result_doc)
-
-        i+=1
-        printProgressBar(i, end)
-
-        time.sleep(3)
-
-    results_map[doc_id] = result_docs
+    results = [documents[x] for x in pmid_results[doc["pmid"]]]
+    for result in results:
+        for i in range(len(result["meshMajor"])):
+            result["meshMajor"][i] = result["meshMajor"][i].split("*")[0]
 
     for k in range(0, len(thresholds)):
         threshold = thresholds[k]
 
-        eval.query(result_docs[0:threshold], doc)
+        eval.query(results[0:threshold], doc)
         eval.calculate()
 
         metrics_obj_list[k].updateMacroAverages(eval)
-
-results_map_file = open("results_map.json", "w")
-results_map_file.write(json.dumps(results_map))
 
 for obj in metrics_obj_list:
     obj.calculate(len(test_set))
