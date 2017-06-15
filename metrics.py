@@ -11,23 +11,24 @@ class Metrics:
         self.doc_f1score_values = []
 
     def updateMacroAverages(self, eval):
-        self.average_doc_precision += eval.getAverageDocPrecision()
-        self.average_doc_recall += eval.getAverageDocRecall()
-        self.average_doc_f1score += eval.getAverageDocF1score()
-
         self.doc_precision_values.append(eval.getAverageDocPrecision())
         self.doc_recall_values.append(eval.getAverageDocRecall())
         self.doc_f1score_values.append(eval.getAverageDocF1score())
 
     def calculate(self, test_set_size):
-        self.average_doc_precision = self.average_doc_precision / test_set_size
-        self.average_doc_recall = self.average_doc_recall / test_set_size
-        self.average_doc_f1score = self.average_doc_f1score / test_set_size
+        self.average_doc_precision = 0
+        self.average_doc_recall = 0
+        self.average_doc_f1score = 0
 
         prec_variance = 0
         rec_variance = 0
         f1_variance = 0
-        for i in range(len(self.doc_precision_values)):
+
+        for i in range(test_set_size):
+            self.average_doc_precision += self.doc_precision_values[i]
+            self.average_doc_recall += self.doc_recall_values[i]
+            self.average_doc_f1score += self.doc_f1score_values[i]
+
             prec_variance += math.pow(self.doc_precision_values[i] - self.average_doc_precision, 2)
             rec_variance += math.pow(self.doc_recall_values[i] - self.average_doc_recall, 2)
             f1_variance += math.pow(self.doc_f1score_values[i] - self.average_doc_f1score, 2)
@@ -39,3 +40,7 @@ class Metrics:
         self.doc_precision_std_dev = math.sqrt(prec_variance)
         self.doc_recall_std_dev = math.sqrt(rec_variance)
         self.doc_f1score_std_dev = math.sqrt(f1_variance)
+
+        self.average_doc_precision = self.average_doc_precision / test_set_size
+        self.average_doc_recall = self.average_doc_recall / test_set_size
+        self.average_doc_f1score = self.average_doc_f1score / test_set_size

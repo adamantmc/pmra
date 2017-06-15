@@ -48,6 +48,7 @@ def getResults(test_set_ids):
     if os.path.exists("results.json"):
         results_file = open("results.json","r")
         pmid_results = json.load(results_file)
+        return pmid_results
     else:
         pmid_results = {}
 
@@ -59,7 +60,8 @@ def getResults(test_set_ids):
             html = BeautifulSoup(search_page.text)
             results = html.body.find_all("div", attrs={"class":"rprt"})[0:11]
 
-            pmid_results[doc_id] = []
+            if doc_id not in pmid_results:
+                pmid_results[doc_id] = []
 
             for result in results:
                 title_p = result.find("p", attrs={"class":"title"})
@@ -72,10 +74,10 @@ def getResults(test_set_ids):
 
             time.sleep(3)
 
-        results_file = open("results.json", "w")
-        results_file.write(json.dumps(pmid_results))
+    results_file = open("results.json", "w")
+    results_file.write(json.dumps(pmid_results))
 
-        tlog("Saved results to results.json.")
+    tlog("Saved results to results.json.")
 
     return pmid_results
 
@@ -144,7 +146,6 @@ else:
 test_set_pmids = [doc["pmid"] for doc in test_set]
 tlog("Test set read.")
 
-
 fw = FileWriter()
 
 for i in range(threshold_start, threshold_end+1):
@@ -157,11 +158,15 @@ pmid_results = getResults(test_set_pmids)
 documents = getResultDocuments(test_set, pmid_results)
 
 for doc in test_set:
-
     results = [documents[x] for x in pmid_results[doc["pmid"]]]
+
     for result in results:
+        result["meshMajor"] = list(set(result["meshMajor"]))
+        print(sorted(result["meshMajor"]))
         for i in range(len(result["meshMajor"])):
             result["meshMajor"][i] = result["meshMajor"][i].split("*")[0]
+
+    break
 
     for k in range(0, len(thresholds)):
         threshold = thresholds[k]

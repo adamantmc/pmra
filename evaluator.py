@@ -48,9 +48,19 @@ class Evaluator:
             self.average_precision += prec_at_i*(rec_at_i - prev_recall)
             prev_recall = rec_at_i
 
-        self.average_doc_precision = doc_tp / (doc_tp + doc_fp)
-        self.average_doc_recall = doc_tp / (doc_tp + doc_fn)
+        av_doc_prec_denominator = doc_tp + doc_fp
+        av_doc_recall_denominator = doc_tp + doc_fn
 
+        if av_doc_prec_denominator == 0:
+            self.average_doc_precision = 0
+        else:
+            self.average_doc_precision = doc_tp / av_doc_prec_denominator
+
+        if av_doc_recall_denominator == 0:
+            self.average_doc_recall = 0
+        else:
+            self.average_doc_recall = doc_tp / av_doc_recall_denominator
+            
         if self.average_doc_precision + self.average_doc_recall != 0:
             self.average_doc_f1score = 2*(self.average_doc_precision*self.average_doc_recall) / (self.average_doc_precision + self.average_doc_recall)
         else:
